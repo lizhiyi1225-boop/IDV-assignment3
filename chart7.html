@@ -2,31 +2,84 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chart 7 (Venn Diagram) — D3.js with Transition & Interaction</title>
+<title>Chart 7 (Venn Diagram) - D3.js with Transition & Interaction</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <style>
-  body { background:#e6ebeb; font-family:system-ui,Arial; margin:0; padding:24px; }
-  .container { display:flex; justify-content:center; align-items:flex-start; gap:30px; max-width:1200px; margin:auto; }
-  svg { background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.06); border-radius:10px; }
-  text { font-size:16px; font-weight:500; text-anchor:middle; dominant-baseline:middle; }
-  .label{font-size:18px;font-weight:600}
-  .tooltip{ position:absolute; background:#fff; border:1px solid #ccc; border-radius:6px; padding:6px 8px; font-size:12px; pointer-events:none; box-shadow:0 2px 6px rgba(0,0,0,.1); }
-  .note { width:360px; background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding:20px 24px; font-size:14px; line-height:1.6; color:#333; }
-  .note h3 { text-align:center; font-size:18px; font-weight:600; margin-top:0; }
-  @media (max-width:900px){ .container{flex-direction:column;align-items:center;} .note{width:90%;margin-top:20px;} }
+  body {
+    background:#e6ebeb;
+    font-family:system-ui,Arial;
+    margin:0;
+    padding:24px;
+  }
+  .container {
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    gap:30px;
+    max-width:1100px;
+    margin:auto;
+  }
+  svg {
+    background:#fff;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
+    border-radius:10px;
+  }
+  text {
+    font-size:16px;
+    font-weight:500;
+    text-anchor:middle;
+    dominant-baseline:middle;
+  }
+  .label {
+    font-size:18px;
+    font-weight:600;
+  }
+  .tooltip {
+    position:absolute;
+    background:#fff;
+    border:1px solid #ccc;
+    border-radius:6px;
+    padding:6px 8px;
+    font-size:12px;
+    pointer-events:none;
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+  }
+  .note {
+    width:340px;
+    background:#fff;
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    padding:20px 24px;
+    font-size:14px;
+    line-height:1.6;
+    color:#333;
+  }
+  .note h3 {
+    text-align:center;
+    font-size:18px;
+    font-weight:600;
+    margin-top:0;
+  }
+  @media (max-width:900px){
+    .container{flex-direction:column;align-items:center;}
+    .note{width:90%;margin-top:20px;}
+  }
 </style>
 </head>
 <body>
+
 <div class="container">
   <svg width="640" height="400"></svg>
   <div class="note">
-    <h3>How I made this Venn chart with ChatGPT</h3>
-    <p>This chart shows how <b>Delete</b>, <b>Replace</b>, and <b>Rewrite</b> are connected. I built it step by step with ChatGPT’s help.</p>
-    <p>First, I drew three light-colored circles — purple, gray, and yellow — and added their names. Then I placed Roman numbers (I–VII) to show the overlapping parts.</p>
-    <p>When the page loads, the circles slowly appear, and the texts fade in. If I move my mouse, a small box tells me which part I’m pointing at, and that area becomes brighter. Clicking keeps the highlight on until I click again.</p>
-    <p>I also fixed some label positions, like moving “VI” to the right spot. The soft colors make the overlaps easy to see without being too strong.</p>
+    <h3>How ChatGPT helped me make this Venn chart</h3>
+    <p>This chart shows how <b>Delete</b>, <b>Replace</b>, and <b>Rewrite</b> are connected. I created it step by step with ChatGPT’s guidance.</p>
+    <p><b>Setup:</b> ChatGPT helped me draw three light-colored circles (purple, gray, yellow), add their names, and place Roman numerals (I–VII) for the overlap areas.</p>
+    <p><b>Animation:</b> ChatGPT showed me how to make the circles smoothly expand on load and the text fade in for a calm, clear effect.</p>
+    <p><b>Interaction:</b> With ChatGPT’s help, I added a tooltip to show which region the mouse is on and dim the unrelated circles. ChatGPT also taught me to add a click action to lock and unlock highlights.</p>
+    <p><b>Polish:</b> ChatGPT guided me to adjust label positions (like moving “VI” to the correct place) and choose soft colors so the overlaps are easy to see but not harsh.</p>
   </div>
 </div>
+
 <script>
 const svg = d3.select("svg");
 const W = +svg.attr("width"), H = +svg.attr("height");
@@ -47,9 +100,12 @@ function regionLabel(inA,inB,inC){
 }
 const g = svg.append("g");
 g.selectAll("circle").data(circles).enter().append("circle")
-  .attr("cx",d=>d.cx).attr("cy",d=>d.cy).attr("r",0)
-  .style("fill",d=>d.color).style("stroke","none")
-  .transition().duration(900).delay((_,i)=>i*120).attr("r",d=>d.r);
+  .attr("cx",d=>d.cx).attr("cy",d=>d.cy)
+  .attr("r",0)
+  .style("fill",d=>d.color)
+  .style("stroke","none")
+  .transition().duration(900).delay((_,i)=>i*120)
+  .attr("r",d=>d.r);
 const labelsPos = [
   {txt:"Delete",x:circles[0].cx-100,y:circles[0].cy+120},
   {txt:"Replace",x:circles[1].cx,y:circles[1].cy-120},
@@ -74,27 +130,40 @@ g.selectAll(".fixed").data(roman).enter().append("text")
   .transition().duration(600).delay(650).style("opacity",1);
 const tooltip = d3.select("body").append("div").attr("class","tooltip").style("opacity",0);
 let locked=false;
-function inside(d,x,y){const dx=x-d.cx,dy=y-d.cy;return dx*dx+dy*dy<=d.r*d.r;}
+function inside(d,x,y){
+  const dx=x-d.cx,dy=y-d.cy;
+  return dx*dx+dy*dy<=d.r*d.r;
+}
 function highlightAt(x,y){
-  const inA=inside(circles[0],x,y),inB=inside(circles[1],x,y),inC=inside(circles[2],x,y);
+  const inA=inside(circles[0],x,y);
+  const inB=inside(circles[1],x,y);
+  const inC=inside(circles[2],x,y);
   const label=regionLabel(inA,inB,inC);
-  svg.selectAll("circle").style("opacity",d=>{
-    const f=(d.key==="A"&&inA)||(d.key==="B"&&inB)||(d.key==="C"&&inC);
-    return label?(f?1:0.25):1;
-  });
+  svg.selectAll("circle")
+    .style("opacity",d=>{
+      const f=(d.key==="A"&&inA)||(d.key==="B"&&inB)||(d.key==="C"&&inC);
+      return label?(f?1:0.25):1;
+    });
   if(label){
     const sets=[inA?"Delete":null,inB?"Replace":null,inC?"Rewrite":null].filter(Boolean).join(" ∩ ");
-    tooltip.style("opacity",1).html(`<b>Region ${label}</b><br>${sets}`)
-      .style("left",(x+14)+"px").style("top",(y+14)+"px");
+    tooltip.style("opacity",1)
+      .html(`<b>Region ${label}</b><br>${sets}`)
+      .style("left",(x+14)+"px")
+      .style("top",(y+14)+"px");
   }else tooltip.style("opacity",0);
 }
-svg.on("mousemove",ev=>{ if(locked) return; const pt=d3.pointer(ev,svg.node()); highlightAt(pt[0],pt[1]); });
-svg.on("mouseleave",()=>{ if(!locked){ svg.selectAll("circle").style("opacity",1); tooltip.style("opacity",0); } });
+svg.on("mousemove",ev=>{
+  if(locked)return;
+  const pt=d3.pointer(ev,svg.node());
+  highlightAt(pt[0],pt[1]);
+});
+svg.on("mouseleave",()=>{if(!locked){svg.selectAll("circle").style("opacity",1);tooltip.style("opacity",0);}});
 svg.on("click",ev=>{
   const pt=d3.pointer(ev,svg.node());
-  if(!locked){ highlightAt(pt[0],pt[1]); locked=true; }
-  else{ locked=false; svg.selectAll("circle").style("opacity",1); tooltip.style("opacity",0); }
+  if(!locked){highlightAt(pt[0],pt[1]);locked=true;}
+  else{locked=false;svg.selectAll("circle").style("opacity",1);tooltip.style("opacity",0);}
 });
 </script>
+
 </body>
 </html>
