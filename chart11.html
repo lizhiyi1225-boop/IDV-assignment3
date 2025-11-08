@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Chart 11 (function) — union shaded + interactions</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  body{
+    background:#e6ebeb; margin:0; padding:24px;
+    font-family:"Times New Roman",serif;
+  }
+  /* 左图右注释容器 */
+  .container{
+    max-width:1200px; margin:0 auto;
+    display:flex; align-items:flex-start; justify-content:center;
+    gap:32px; /* 图与注释留白 */
+  }
+  svg{
+    background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.06);
+    border-radius:10px; display:block;
+  }
+  .axis path,.axis line{stroke:#888}
+  .grid line{stroke:#d7dde2}
+  .line-yellow{fill:none;stroke:#e3b23f;stroke-width:3}
+  .line-blue{fill:none;stroke:#3a7b86;stroke-width:3}
+  .line-dim{opacity:.25}
+  .shade{fill:#888;opacity:.45}
+  .vline{stroke:#000;stroke-dasharray:5 3;stroke-width:1.8;cursor:ew-resize}
+  .drag-zone{fill:transparent;cursor:ew-resize}
+  .focus-dot{stroke:#000;stroke-width:.8;fill:#fff}
+  .tooltip{
+    position:absolute;background:#fff;border:1px solid #ccc;
+    border-radius:4px;padding:6px 8px;font-size:13px;pointer-events:none
+  }
+  /* 右侧注释块 */
+  .annotation{
+    width:360px; /* 固定宽度，避免挤压图 */
+    background:#fff;border-radius:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    padding:20px 24px; color:#222; line-height:1.6; font-size:15px;
+  }
+  .annotation h2{
+    font-size:18px; text-align:center; margin:0 0 12px; color:#333;
+  }
+  .annotation p{margin:6px 0}
+  .annotation strong{color:#3a7b86}
+
+  /* 窄屏自动上下堆叠 */
+  @media (max-width: 900px){
+    .container{flex-direction:column; gap:20px}
+    .annotation{width:100%}
+    svg{margin:0 auto}
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 左侧：图表 -->
+  <svg width="760" height="460"></svg>
+
+  <!-- 右侧：注释 -->
+  <div class="annotation">
+    <h2>How I Made This Chart with ChatGPT</h2>
+    <p>In this D3.js project, I turned a static image into an interactive chart with ChatGPT’s help.</p>
+    <p><strong>Basic Chart:</strong> I uploaded a sample image and asked ChatGPT to rebuild it with D3.js. It created the chart with two lines — yellow and blue — showing different data.</p>
+    <p><strong>Add Animation:</strong> ChatGPT helped me make the lines appear slowly, like being drawn by hand. This made the chart look smoother and more dynamic.</p>
+    <p><strong>Add Interaction:</strong> I added draggable dashed lines and tooltips to show x and y values. The chart now responds to mouse movement.</p>
+    <p><strong>Final Touches:</strong> I added hover effects for the legend — the selected line becomes brighter.</p>
+  </div>
+</div>
+
+<script>
+// ====== D3.js Chart Code (unchanged) ======
+const svg = d3.select("svg");
+const M = {top:40,right:170,bottom:55,left:80};
+const W = +svg.attr("width") - M.left - M.right;
+const H = +svg.attr("height") - M.top  - M.bottom;
+const g = svg.append("g").attr("transform",`translate(${M.left},${M.top})`);
+
+const x = d3.scaleLinear().domain([-2,5]).range([0,W]);
+const y = d3.scaleLinear().domain([0,0.30]).range([H,0]);
+g.append("g").attr("class","grid").attr("transform",`translate(0,${H})`)
+  .call(d3.axisBottom(x).tickValues([-2,-1,0,1,2,3,4,5]).tickSize(-H).tickFormat(()=>""));
+g.append("g").attr("class","grid").call(d3.axisLeft(y).ticks(6).tickSize(-W).tickFormat(()=>""));
+g.append("g").attr("transform",`translate(0,${H})`).attr("class","axis")
+  .call(d3.axisBottom(x).tickValues([-2,-1,0,1,2,3,4,5]));
+g.append("g").attr("class","axis").call(d3.axisLeft(y).ticks(6));
+g.append("text").attr("x",W/2).attr("y",H+40).attr("text-anchor","middle").attr("font-size","20").text("x");
+g.append("text").attr("transform","rotate(-90)").attr("x",-H/2).attr("y",-55)
+  .attr("text-anchor","middle").attr("font-size","20").text("Probability Density");
+
+svg.append("defs").append("clipPath").attr("id","clipPlot")
+  .append("rect").attr("width",W).attr("height",H);
+const plot = g.append("g").attr("clip-path","url(#clipPlot)");
+
+const gaussian=(mu,s)=>x=>(1/(s*Math.sqrt(2*Math.PI)))*Math.exp(-0.5*((x-mu)/s)**2);
+const fY = gaussian(0.0,1.70);
+const fB = gaussian(2.0,1.60);
+const xs = d3.range(-2,5.001,0.01);
+const data = xs.map(v=>({x:v,y1:fY(v),y2:fB(v)}));
+
+const cross = data.reduce((best,d)=>{ const err=Math.abs(d.y1-d.y2); return err<best.err?{x:d.x,err}:best; },{x:1,err:Infinity}).x;
+let half=0.55; let leftEdge=cross-half; let rightEdge=cross+half;
+
+const shadeArea = d3.area().x(d=>x(d.x)).y0(()=>y(0)).y1(d=>y(Math.max(d.y1,d.y2)));
+const line = d3.line().x(d=>x(d.x));
+
+function drawAnimatedPath(selection, yAccessor, duration){
+  selection.attr("d",line.y(yAccessor))
+  .attr("stroke-dasharray",function(){const L=this.getTotalLength();return `${L} ${L}`;})
+  .attr("stroke-dashoffset",function(){return this.getTotalLength();})
+  .transition().duration(duration).ease(d3.easeCubicOut)
+  .attr("stroke-dashoffset",0);
+}
+const pathYellow=plot.append("path").datum(data).attr("class","line-yellow");
+drawAnimatedPath(pathYellow,d=>y(d.y1),1100);
+const pathBlue=plot.append("path").datum(data).attr("class","line-blue");
+drawAnimatedPath(pathBlue,d=>y(d.y2),1300);
+
+const shadePath=plot.append("path").datum(data.filter(d=>d.x>=leftEdge&&d.x<=rightEdge))
+  .attr("class","shade").attr("opacity",0).attr("d",shadeArea)
+  .transition().duration(600).delay(650).attr("opacity",1);
+
+const vLeft=plot.append("line").attr("class","vline");
+const vRight=plot.append("line").attr("class","vline");
+function updateVlines(){
+  vLeft.attr("x1",x(leftEdge)).attr("x2",x(leftEdge)).attr("y1",y(0)).attr("y2",y(0.28));
+  vRight.attr("x1",x(rightEdge)).attr("x2",x(rightEdge)).attr("y1",y(0)).attr("y2",y(0.28));
+}
+updateVlines();
+
+const dragWidth=14;
+const leftZone=plot.append("rect").attr("class","drag-zone").attr("x",x(leftEdge)-dragWidth/2).attr("y",0).attr("width",dragWidth).attr("height",H);
+const rightZone=plot.append("rect").attr("class","drag-zone").attr("x",x(rightEdge)-dragWidth/2).attr("y",0).attr("width",dragWidth).attr("height",H);
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function refreshShade(){
+  const dat=data.filter(d=>d.x>=leftEdge&&d.x<=rightEdge);
+  plot.selectAll(".shade").datum(dat).attr("d",shadeArea);
+}
+function updateZones(){
+  leftZone.attr("x",x(leftEdge)-dragWidth/2);
+  rightZone.attr("x",x(rightEdge)-dragWidth/2);
+}
+const dragLeft=d3.drag().on("drag",(ev)=>{const xi=clamp(x.invert(d3.pointer(ev,plot.node())[0]),-2,rightEdge-0.1);leftEdge=xi;updateVlines();updateZones();refreshShade();});
+const dragRight=d3.drag().on("drag",(ev)=>{const xi=clamp(x.invert(d3.pointer(ev,plot.node())[0]),leftEdge+0.1,5);rightEdge=xi;updateVlines();updateZones();refreshShade();});
+leftZone.call(dragLeft); rightZone.call(dragRight);
+
+const tooltip=d3.select("body").append("div").attr("class","tooltip").style("display","none");
+const focusY=plot.append("circle").attr("class","focus-dot").attr("r",3.2).style("display","none");
+const focusB=plot.append("circle").attr("class","focus-dot").attr("r",3.2).style("display","none");
+plot.on("mousemove",(ev)=>{
+  const [mx,my]=d3.pointer(ev,plot.node());
+  if(mx<0||mx>W||my<0||my>H){tooltip.style("display","none");focusY.style("display","none");focusB.style("display","none");return;}
+  const xv=x.invert(mx);const yY=fY(xv),yB=fB(xv);
+  focusY.style("display","block").attr("cx",x(xv)).attr("cy",y(yY));
+  focusB.style("display","block").attr("cx",x(xv)).attr("cy",y(yB));
+  const dyY=Math.abs(my-y(yY)),dyB=Math.abs(my-y(yB));
+  if(dyY<dyB){pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",true);}
+  else{pathYellow.classed("line-dim",true);pathBlue.classed("line-dim",false);}
+  tooltip.style("display","block").style("left",(M.left+mx+16)+"px").style("top",(M.top+my+16)+"px")
+    .html(`x=${xv.toFixed(2)}<br>y₀=${yY.toFixed(3)}<br>y₁=${yB.toFixed(3)}`);
+}).on("mouseleave",()=>{tooltip.style("display","none");focusY.style("display","none");focusB.style("display","none");
+  pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",false);});
+</script>
+
+</body>
+</html>

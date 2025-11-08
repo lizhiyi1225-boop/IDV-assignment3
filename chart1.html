@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chart 1 (Vector Space) - With Generation Notes</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  body {
+    margin:0;
+    background:#f6f8fa;
+    font-family:Georgia,serif;
+    color:#111;
+  }
+  .page {
+    max-width:1400px;
+    margin:40px auto;
+    padding:0 24px;
+    display:flex;
+    gap:36px;
+    align-items:flex-start;
+  }
+  .panel {
+    background:#fff;
+    border:1px solid #ddd;
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 3px 8px rgba(0,0,0,.08);
+  }
+  #viz.panel {
+    flex:1;
+  }
+  .notes {
+    flex:0 0 360px;
+    line-height:1.6;
+    font-size:17px;
+  }
+  h1 {
+    font-weight:500;
+    margin:0 0 14px 0;
+    font-size:38px;
+  }
+  .caption {
+    font-size:18px;
+    margin-top:12px;
+  }
+  .notes h3 {
+    margin-top:0;
+    font-size:22px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- 左侧图表 -->
+  <div style="flex:1;">
+    <h1>Chart 1 (Vector Space)</h1>
+    <div id="viz" class="panel"></div>
+    <div class="caption">Created with D3.js through ChatGPT guidance</div>
+  </div>
+
+  <!-- 右侧注释 -->
+  <div class="panel notes">
+    <h3>How I generated this chart with ChatGPT</h3>
+    <p>
+      I first uploaded my teacher’s reference image and asked ChatGPT to recreate it in D3.js. 
+      The first version included grids, labels, and lines, but two connections were missing, 
+      so I told ChatGPT to add the lines from e<sup>α₂</sup> → e<sup>α₁</sup> and e<sup>β₂</sup> → e<sup>β₁</sup>.
+    </p>
+    <p>
+      It then completed the parallelogram and added arrowheads using &lt;defs&gt; for both black and blue arrows. 
+      Next, I asked for transition and hover effects, so the lines now draw smoothly and highlight on hover.
+    </p>
+    <p>
+      Finally, ChatGPT helped me add interactivity such as tooltips and line toggles. 
+      After several adjustments, the chart perfectly matched the reference example.
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  const box = document.getElementById('viz');
+  const W = 900, H = 560;
+  const m = {t:30, r:30, b:30, l:30};
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+
+  const svg = d3.select('#viz').append('svg')
+      .attr('width', W).attr('height', H);
+  const g = svg.append('g').attr('transform', `translate(${m.l},${m.t})`);
+
+  const x = d3.scaleLinear().domain([0,10]).range([0, iw]);
+  const y = d3.scaleLinear().domain([0, 6]).range([ih, 0]);
+
+  // 网格
+  g.append('g')
+    .call(d3.axisBottom(x).ticks(10).tickSize(ih).tickFormat(''))
+    .selectAll('line').attr('y1', 0).attr('stroke', '#d1d5db');
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(6).tickSize(-iw).tickFormat(''))
+    .selectAll('line').attr('x1', 0).attr('stroke', '#d1d5db');
+  g.append('rect').attr('x',0).attr('y',0)
+    .attr('width',iw).attr('height',ih)
+    .attr('fill','none').attr('stroke','#111');
+
+  // 四个关键点
+  const P = {
+    ea1:[9,4],
+    ea2:[5,4],
+    eb1:[6,2],
+    eb2:[2,2]
+  };
+
+  // 箭头定义
+  const defs = svg.append('defs');
+  defs.append('marker').attr('id','arrowDark').attr('viewBox','0 -5 10 10')
+    .attr('refX',10).attr('refY',0).attr('markerWidth',10).attr('markerHeight',10).attr('orient','auto')
+    .append('path').attr('d','M0,-5L10,0L0,5').attr('fill','#111');
+  defs.append('marker').attr('id','arrowBlue').attr('viewBox','0 -5 10 10')
+    .attr('refX',10).attr('refY',0).attr('markerWidth',10).attr('markerHeight',10).attr('orient','auto')
+    .append('path').attr('d','M0,-5L10,0L0,5').attr('fill','#0ea5e9');
+
+  // 线段数据
+  const segs = [
+    {from:'ea2', to:'ea1', color:'#6b7280', width:2, dash:false, arrow:null},  
+    {from:'eb2', to:'eb1', color:'#6b7280', width:2, dash:false, arrow:null},  
+    {from:'ea2', to:'eb2', color:'#111', width:2.5, dash:false, arrow:'arrowDark'}, 
+    {from:'ea1', to:'eb1', color:'#111', width:2.5, dash:false, arrow:'arrowDark'}, 
+    {from:'eb2', to:'ea1', color:'#0ea5e9', width:2.5, dash:true, arrow:'arrowBlue'},
+    {from:'ea2', to:'eb1', color:'#0ea5e9', width:2.5, dash:true, arrow:'arrowBlue'}
+  ];
+
+  // 绘制线并加动画
+  const lines = g.selectAll('.seg').data(segs).enter().append('line')
+    .attr('class','seg')
+    .attr('x1', d=>x(P[d.from][0])).attr('y1', d=>y(P[d.from][1]))
+    .attr('x2', d=>x(P[d.from][0])).attr('y2', d=>y(P[d.from][1]))
+    .attr('stroke', d=>d.color).attr('stroke-width', d=>d.width)
+    .attr('stroke-dasharray', d=>d.dash ? '7 5' : null)
+    .attr('marker-end', d=> d.arrow ? `url(#${d.arrow})` : null);
+
+  lines.transition().delay((d,i)=>i*150).duration(1000)
+    .attr('x2', d=>x(P[d.to][0])).attr('y2', d=>y(P[d.to][1]));
+
+  // 悬停交互
+  lines.on('mouseenter', function(){
+    d3.selectAll('.seg').attr('opacity',0.25);
+    d3.select(this).attr('opacity',1).attr('stroke-width',3.5);
+  }).on('mouseleave', function(){
+    d3.selectAll('.seg').attr('opacity',1)
+      .attr('stroke-width', d=>d.width);
+  });
+
+  // 标签
+  const labels = [
+    {p:'ea1', txt:'e^α₁', dx:10, dy:14},
+    {p:'ea2', txt:'e^α₂', dx:-10, dy:14},
+    {p:'eb1', txt:'e^β₁', dx:10, dy:14},
+    {p:'eb2', txt:'e^β₂', dx:-10, dy:14}
+  ];
+  g.selectAll('.lbl').data(labels).enter().append('text')
+    .attr('font-style','italic').attr('font-size',32)
+    .attr('x', d=>x(P[d.p][0])+d.dx)
+    .attr('y', d=>y(P[d.p][1])+d.dy)
+    .text(d=>d.txt);
+})();
+</script>
+</body>
+</html>

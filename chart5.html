@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Chart 5 (Math Plots) — D3.js + Right Note</title>
+
+<!-- ✅ 固定到 UMD 版本，保证 window.d3 存在 -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+  // 备用源自动降级，避免“整页发白”
+  if (!window.d3) {
+    var s = document.createElement('script');
+    s.src = 'https://unpkg.com/d3@7.9.0/dist/d3.min.js';
+    document.head.appendChild(s);
+  }
+</script>
+
+<style>
+  :root{
+    --card:#ffffff; --bg:#e6ebeb; --shadow:0 2px 8px rgba(0,0,0,.06);
+    --border:#e5e7eb; --text:#111; --muted:#555;
+  }
+  body{
+    margin:0; background:var(--bg);
+    font-family:system-ui, -apple-system, Segoe UI, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color:var(--text);
+  }
+  /* 左图右注释布局 */
+  .wrap{
+    max-width:1200px; margin:28px auto; padding:0 20px;
+    display:flex; align-items:flex-start; justify-content:center; gap:28px;
+  }
+  .card{
+    background:var(--card); box-shadow:var(--shadow);
+    border-radius:12px; border:1px solid var(--border);
+  }
+  /* 图表容器（内边距让图不贴边） */
+  .viz{
+    padding:12px; overflow:auto;
+  }
+  svg{ display:block; background:#fff; border-radius:8px; box-shadow:var(--shadow); }
+
+  /* 右侧注释 */
+  .note{
+    width:360px; padding:18px 22px; line-height:1.6;
+  }
+  .note h3{ margin:0 0 10px; font-size:18px; }
+  .note p{ margin:8px 0; font-size:14px; color:#222; }
+  .note b{ color:#0b7285; }
+
+  /* 图表样式 */
+  .base-band{fill:#b6a7e6; opacity:.25}
+  .bar-fill{fill:#b6a7e6; opacity:.6}
+  .bar-dashed{fill:none; stroke:#8f7edc; stroke-width:2; stroke-dasharray:6,6}
+  .axis path,.axis line{stroke:#000}
+  .axis .domain{display:none}
+  .axis-main{stroke:#000; stroke-width:3}
+  .arrow{stroke:#6e5ac7; stroke-width:2; fill:none}
+  .line{fill:none; stroke:#4e944f; stroke-width:2}
+  .line.dashed{stroke-dasharray:6,6; opacity:.35}
+  .dot{fill:#4e944f}
+  .tooltip{
+    position:absolute; background:#fff; border:1px solid #ccc; border-radius:6px;
+    padding:6px 8px; font-size:12px; pointer-events:none; box-shadow:0 2px 8px rgba(0,0,0,.08);
+  }
+
+  /* 窄屏改为上下堆叠 */
+  @media (max-width: 900px){
+    .wrap{ flex-direction:column; gap:18px; }
+    .note{ width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- 左：图表 -->
+  <div class="card viz">
+    <svg id="chart" width="900" height="380" aria-label="Chart 5 Math Plots"></svg>
+  </div>
+
+  <!-- 右：英文注释 -->
+  <div class="card note">
+    <h3>How I made this chart with ChatGPT</h3>
+    <p>In this D3.js project, I created <b>Chart 5 — Math Plots</b> with ChatGPT’s help. The chart has two parts — a bar chart on the left and a line chart on the right, with one animation and one interactive effect.</p>
+    <p>I uploaded my teacher’s reference image and explained the task. ChatGPT built the basic structure, added colors, and labels. At first, the chart didn’t appear because the D3 CDN failed to load, so we switched to a working <b>jsDelivr</b> link.</p>
+    <p>Then I asked to separate the x and y axes on the right and make the second bar dashed and transparent. After these changes, the chart worked smoothly and looked complete.</p>
+  </div>
+</div>
+
+<script>
+(function init(){
+  // 等待 d3 注入（若首个 CDN 失败会有短暂空窗）
+  function ready(fn){
+    if (window.d3) return fn();
+    setTimeout(()=>ready(fn), 50);
+  }
+
+  ready(function(){
+    const svg = d3.select("#chart");
+
+    /* ========= 左侧：柱状示意 ========= */
+    const left = svg.append("g").attr("transform","translate(90,90)");
+    const xLeft = d3.scaleBand().domain(["i/n","(i+Δn)/n"]).range([0,200]).padding(0.25);
+    const yLeft = d3.scaleLinear().domain([0,1]).range([140,0]);
+
+    // 底部浅紫区带
+    left.append("rect").attr("class","base-band")
+        .attr("x",-8).attr("y", yLeft(0.05)).attr("width", 220).attr("height", 140 - yLeft(0.05));
+
+    // 轴与标签
+    left.append("g").attr("transform","translate(0,140)").attr("class","axis")
+        .call(d3.axisBottom(xLeft));
+    left.append("g").attr("class","axis").call(d3.axisLeft(yLeft).ticks(0));
+
+    left.append("text")
+        .attr("x",-14).attr("y",yLeft(0.1)).attr("text-anchor","end")
+        .attr("font-size","12px").text("(High) p₁");
+    left.append("text")
+        .attr("x",-14).attr("y",yLeft(1)-10).attr("text-anchor","end")
+        .attr("font-size","12px").text("(High) p₂");
+
+    // 坐标主轴
+    left.append("line").attr("class","axis-main").attr("x1",-10).attr("y1",140).attr("x2",210).attr("y2",140);
+    left.append("line").attr("class","axis-main").attr("x1",0).attr("y1",148).attr("x2",0).attr("y2",-12);
+
+    const heightVal = 0.62;
+
+    // 左实心柱（含右移动画）
+    const bar1 = left.append("rect").attr("class","bar-fill")
+      .attr("x", xLeft("i/n"))
+      .attr("y", yLeft(heightVal))
+      .attr("width", xLeft.bandwidth())
+      .attr("height", 140 - yLeft(heightVal));
+
+    // 右虚线空心柱
+    left.append("rect").attr("class","bar-dashed")
+      .attr("x", xLeft("(i+Δn)/n"))
+      .attr("y", yLeft(heightVal))
+      .attr("width", xLeft.bandwidth())
+      .attr("height", 140 - yLeft(heightVal));
+
+    // 箭头定义
+    const defs = svg.append("defs");
+    defs.append("marker")
+      .attr("id","arrowHead").attr("viewBox","0 0 10 10")
+      .attr("refX",10).attr("refY",5).attr("markerWidth",7).attr("markerHeight",7).attr("orient","auto")
+      .append("path").attr("d","M0,0 L10,5 L0,10 Z").attr("fill","#6e5ac7");
+
+    // 中间箭头动画
+    left.append("line").attr("class","arrow").attr("marker-end","url(#arrowHead)")
+      .attr("x1", xLeft("i/n")+xLeft.bandwidth()*0.85).attr("y1", yLeft(heightVal*0.55))
+      .attr("x2", xLeft("i/n")+xLeft.bandwidth()*0.85).attr("y2", yLeft(heightVal*0.55))
+      .transition().delay(600).duration(1200)
+      .attr("x2", xLeft("(i+Δn)/n")+xLeft.bandwidth()*0.15);
+
+    // 实心柱右移
+    bar1.transition().delay(800).duration(1200)
+      .attr("x", xLeft("(i+Δn)/n"));
+
+    /* ========= 右侧：分离坐标轴线图 ========= */
+    const right = svg.append("g").attr("transform","translate(520,60)");
+    const xRight = d3.scaleLinear().domain([0,1]).range([0,300]);
+    const yRight = d3.scaleLinear().domain([0,50]).range([160,0]);
+
+    right.append("g").attr("transform","translate(0,160)").attr("class","axis")
+      .call(d3.axisBottom(xRight).ticks(3));
+    right.append("g").attr("class","axis")
+      .call(d3.axisLeft(yRight).ticks(3));
+
+    // 分离主轴线
+    right.append("line").attr("class","axis-main")
+      .attr("x1",16).attr("y1",160).attr("x2",315).attr("y2",160);
+    right.append("line").attr("class","axis-main")
+      .attr("x1",0).attr("y1",146).attr("x2",0).attr("y2",-10);
+
+    // 曲线数据
+    const data = d3.range(0,1.001,0.04).map(x=>({x, y:36 - 12*Math.pow(x,1.4)}));
+    const dataDashed = data.map(d=>({x:d.x, y:d.y+10}));
+    const lineGen = d3.line().x(d=>xRight(d.x)).y(d=>yRight(d.y));
+
+    // 虚线参考
+    right.append("path").datum(dataDashed).attr("class","line dashed").attr("d", lineGen);
+
+    // 实线 + 绘制动画
+    const solid = right.append("path").datum(data).attr("class","line").attr("d", lineGen);
+    requestAnimationFrame(()=>{
+      const L = solid.node().getTotalLength();
+      solid.attr("stroke-dasharray", L).attr("stroke-dashoffset", L)
+           .transition().duration(1800).ease(d3.easeCubic).attr("stroke-dashoffset",0);
+    });
+
+    // 悬浮提示
+    const tip = d3.select("body").append("div").attr("class","tooltip").style("opacity",0);
+    right.selectAll(".dot").data(data).enter().append("circle")
+      .attr("class","dot").attr("r",3.5)
+      .attr("cx",d=>xRight(d.x)).attr("cy",d=>yRight(d.y))
+      .on("mouseenter",(e,d)=>{
+        tip.style("opacity",1).html(`x=${d.x.toFixed(2)}<br>y=${d.y.toFixed(1)}`)
+           .style("left",(e.pageX+10)+"px").style("top",(e.pageY-10)+"px");
+      })
+      .on("mouseleave",()=>tip.style("opacity",0));
+
+    // 滚动时隐藏 tooltip，避免定位偏移
+    window.addEventListener('scroll', ()=> tip.style("opacity",0));
+  });
+})();
+</script>
+</body>
+</html>
