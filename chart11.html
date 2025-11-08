@@ -2,22 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Chart 11 (function) — union shaded + interactions</title>
+<title>Chart 11 (Function) — Union Shaded + Interactions</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <style>
-  body{
-    background:#e6ebeb; margin:0; padding:24px;
+  body {
+    background:#e6ebeb;
+    margin:0;
+    padding:24px;
     font-family:"Times New Roman",serif;
   }
-  /* 左图右注释容器 */
-  .container{
-    max-width:1200px; margin:0 auto;
-    display:flex; align-items:flex-start; justify-content:center;
-    gap:32px; /* 图与注释留白 */
+  .container {
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    gap:30px;
+    max-width:1200px;
+    margin:auto;
   }
-  svg{
-    background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.06);
-    border-radius:10px; display:block;
+  svg {
+    background:#fff;
+    box-shadow:0 2px 10px rgba(0,0,0,.06);
+    border-radius:10px;
   }
   .axis path,.axis line{stroke:#888}
   .grid line{stroke:#d7dde2}
@@ -29,49 +34,56 @@
   .drag-zone{fill:transparent;cursor:ew-resize}
   .focus-dot{stroke:#000;stroke-width:.8;fill:#fff}
   .tooltip{
-    position:absolute;background:#fff;border:1px solid #ccc;
-    border-radius:4px;padding:6px 8px;font-size:13px;pointer-events:none
+    position:absolute;
+    background:#fff;
+    border:1px solid #ccc;
+    border-radius:4px;
+    padding:6px 8px;
+    font-size:13px;
+    pointer-events:none;
   }
-  /* 右侧注释块 */
-  .annotation{
-    width:360px; /* 固定宽度，避免挤压图 */
-    background:#fff;border-radius:10px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.1);
-    padding:20px 24px; color:#222; line-height:1.6; font-size:15px;
-  }
-  .annotation h2{
-    font-size:18px; text-align:center; margin:0 0 12px; color:#333;
-  }
-  .annotation p{margin:6px 0}
-  .annotation strong{color:#3a7b86}
 
-  /* 窄屏自动上下堆叠 */
-  @media (max-width: 900px){
-    .container{flex-direction:column; gap:20px}
-    .annotation{width:100%}
-    svg{margin:0 auto}
+  /* Right-side annotation box */
+  .note {
+    width:360px;
+    background:#fff;
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    padding:22px 26px;
+    font-size:14px;
+    line-height:1.6;
+    color:#333;
+  }
+  .note h3 {
+    text-align:center;
+    font-size:18px;
+    font-weight:600;
+    margin-top:0;
+    margin-bottom:10px;
+  }
+
+  @media (max-width:900px){
+    .container{flex-direction:column;align-items:center;}
+    .note{width:90%;margin-top:20px;}
   }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- 左侧：图表 -->
   <svg width="760" height="460"></svg>
-
-  <!-- 右侧：注释 -->
-  <div class="annotation">
-    <h2>How I Made This Chart with ChatGPT</h2>
+  <div class="note">
+    <h3>How I Made This Chart with ChatGPT</h3>
     <p>In this D3.js project, I turned a static image into an interactive chart with ChatGPT’s help.</p>
-    <p><strong>Basic Chart:</strong> I uploaded a sample image and asked ChatGPT to rebuild it with D3.js. It created the chart with two lines — yellow and blue — showing different data.</p>
-    <p><strong>Add Animation:</strong> ChatGPT helped me make the lines appear slowly, like being drawn by hand. This made the chart look smoother and more dynamic.</p>
-    <p><strong>Add Interaction:</strong> I added draggable dashed lines and tooltips to show x and y values. The chart now responds to mouse movement.</p>
-    <p><strong>Final Touches:</strong> I added hover effects for the legend — the selected line becomes brighter.</p>
+    <p><b>Basic Chart:</b> I uploaded a sample image and asked ChatGPT to rebuild it with D3.js. It created the chart with two lines — yellow and blue — showing different data.</p>
+    <p><b>Add Animation:</b> ChatGPT helped me make the lines appear slowly, like being drawn by hand. This made the chart look smoother and more dynamic.</p>
+    <p><b>Add Interaction:</b> I added draggable dashed lines and tooltips to show x and y values. The chart now responds to mouse movement.</p>
+    <p><b>Final Touches:</b> I added hover effects for the legend — the selected line becomes brighter.</p>
   </div>
 </div>
 
 <script>
-// ====== D3.js Chart Code (unchanged) ======
+// === D3.js chart ===
 const svg = d3.select("svg");
 const M = {top:40,right:170,bottom:55,left:80};
 const W = +svg.attr("width") - M.left - M.right;
@@ -100,18 +112,17 @@ const fB = gaussian(2.0,1.60);
 const xs = d3.range(-2,5.001,0.01);
 const data = xs.map(v=>({x:v,y1:fY(v),y2:fB(v)}));
 
-const cross = data.reduce((best,d)=>{ const err=Math.abs(d.y1-d.y2); return err<best.err?{x:d.x,err}:best; },{x:1,err:Infinity}).x;
+const cross = data.reduce((best,d)=>{const err=Math.abs(d.y1-d.y2);return err<best.err?{x:d.x,err}:best;},{x:1,err:Infinity}).x;
 let half=0.55; let leftEdge=cross-half; let rightEdge=cross+half;
 
-const shadeArea = d3.area().x(d=>x(d.x)).y0(()=>y(0)).y1(d=>y(Math.max(d.y1,d.y2)));
-const line = d3.line().x(d=>x(d.x));
+const shadeArea=d3.area().x(d=>x(d.x)).y0(()=>y(0)).y1(d=>y(Math.max(d.y1,d.y2)));
+const line=d3.line().x(d=>x(d.x));
 
-function drawAnimatedPath(selection, yAccessor, duration){
-  selection.attr("d",line.y(yAccessor))
+function drawAnimatedPath(sel,yAcc,dur){
+  sel.attr("d",line.y(yAcc))
   .attr("stroke-dasharray",function(){const L=this.getTotalLength();return `${L} ${L}`;})
   .attr("stroke-dashoffset",function(){return this.getTotalLength();})
-  .transition().duration(duration).ease(d3.easeCubicOut)
-  .attr("stroke-dashoffset",0);
+  .transition().duration(dur).ease(d3.easeCubicOut).attr("stroke-dashoffset",0);
 }
 const pathYellow=plot.append("path").datum(data).attr("class","line-yellow");
 drawAnimatedPath(pathYellow,d=>y(d.y1),1100);
@@ -134,14 +145,8 @@ const dragWidth=14;
 const leftZone=plot.append("rect").attr("class","drag-zone").attr("x",x(leftEdge)-dragWidth/2).attr("y",0).attr("width",dragWidth).attr("height",H);
 const rightZone=plot.append("rect").attr("class","drag-zone").attr("x",x(rightEdge)-dragWidth/2).attr("y",0).attr("width",dragWidth).attr("height",H);
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-function refreshShade(){
-  const dat=data.filter(d=>d.x>=leftEdge&&d.x<=rightEdge);
-  plot.selectAll(".shade").datum(dat).attr("d",shadeArea);
-}
-function updateZones(){
-  leftZone.attr("x",x(leftEdge)-dragWidth/2);
-  rightZone.attr("x",x(rightEdge)-dragWidth/2);
-}
+function refreshShade(){const dat=data.filter(d=>d.x>=leftEdge&&d.x<=rightEdge);plot.selectAll(".shade").datum(dat).attr("d",shadeArea);}
+function updateZones(){leftZone.attr("x",x(leftEdge)-dragWidth/2);rightZone.attr("x",x(rightEdge)-dragWidth/2);}
 const dragLeft=d3.drag().on("drag",(ev)=>{const xi=clamp(x.invert(d3.pointer(ev,plot.node())[0]),-2,rightEdge-0.1);leftEdge=xi;updateVlines();updateZones();refreshShade();});
 const dragRight=d3.drag().on("drag",(ev)=>{const xi=clamp(x.invert(d3.pointer(ev,plot.node())[0]),leftEdge+0.1,5);rightEdge=xi;updateVlines();updateZones();refreshShade();});
 leftZone.call(dragLeft); rightZone.call(dragRight);
@@ -160,8 +165,25 @@ plot.on("mousemove",(ev)=>{
   else{pathYellow.classed("line-dim",true);pathBlue.classed("line-dim",false);}
   tooltip.style("display","block").style("left",(M.left+mx+16)+"px").style("top",(M.top+my+16)+"px")
     .html(`x=${xv.toFixed(2)}<br>y₀=${yY.toFixed(3)}<br>y₁=${yB.toFixed(3)}`);
-}).on("mouseleave",()=>{tooltip.style("display","none");focusY.style("display","none");focusB.style("display","none");
-  pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",false);});
+}).on("mouseleave",()=>{tooltip.style("display","none");focusY.style("display","none");focusB.style("display","none");pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",false);});
+
+g.append("line").attr("x1",W+10).attr("y1",25).attr("x2",W+40).attr("y2",25)
+  .attr("stroke","#e3b23f").attr("stroke-width",4)
+  .on("mouseenter",()=>{pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",true);})
+  .on("mouseleave",()=>{pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",false);});
+g.append("text").attr("x",W+50).attr("y",30).attr("font-size","18").attr("font-style","italic")
+  .text("p(x, y = 0) * v(x)")
+  .on("mouseenter",()=>{pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",true);})
+  .on("mouseleave",()=>{pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",false);});
+
+g.append("line").attr("x1",W+10).attr("y1",55).attr("x2",W+40).attr("y2",55)
+  .attr("stroke","#3a7b86").attr("stroke-width",4)
+  .on("mouseenter",()=>{pathYellow.classed("line-dim",true);pathBlue.classed("line-dim",false);})
+  .on("mouseleave",()=>{pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",false);});
+g.append("text").attr("x",W+50).attr("y",60).attr("font-size","18").attr("font-style","italic")
+  .text("p(x, y = 1) * v(x)")
+  .on("mouseenter",()=>{pathYellow.classed("line-dim",true);pathBlue.classed("line-dim",false);})
+  .on("mouseleave",()=>{pathYellow.classed("line-dim",false);pathBlue.classed("line-dim",false);});
 </script>
 
 </body>
